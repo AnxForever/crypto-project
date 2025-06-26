@@ -1,0 +1,766 @@
+{% extends "base.html" %}
+
+{% block title %}PKE加密应用演示 - 基于真实交易数据{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <!-- 页面标题 -->
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="fas fa-shield-alt me-2"></i>PKE加密应用演示
+        </h1>
+        <p class="page-description">基于真实MinsaPay交易数据集的SM2加密方案应用</p>
+    </div>
+
+    <!-- 控制面板 -->
+    <div class="content-card mb-4">
+        <h5 class="card-title">
+            <i class="fas fa-cogs me-2"></i>系统控制面板
+        </h5>
+        <div class="row g-4">
+            <!-- 数据集选择 -->
+            <div class="col-lg-3 col-md-4">
+                <div class="form-group">
+                    <label class="form-label">数据集规模</label>
+                    <select id="datasetSize" class="form-control select-control">
+                        <option value="small">小型数据集 (100笔交易)</option>
+                        <option value="medium" selected>中型数据集 (1000笔交易)</option>
+                        <option value="large">完整数据集 (2900笔交易)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- 敏感字段选择 -->
+            <div class="col-lg-5 col-md-8">
+                <div class="form-group">
+                    <label class="form-label">加密字段选择</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="field_amount" value="amount" checked>
+                            <label class="form-check-label" for="field_amount">
+                                <span class="badge bg-danger">交易金额</span>
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="field_balance" value="balance" checked>
+                            <label class="form-check-label" for="field_balance">
+                                <span class="badge bg-danger">账户余额</span>
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="field_user" value="user" checked>
+                            <label class="form-check-label" for="field_user">
+                                <span class="badge bg-warning">用户ID</span>
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="field_booth" value="booth" checked>
+                            <label class="form-check-label" for="field_booth">
+                                <span class="badge bg-warning">商户ID</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 操作按钮 -->
+            <div class="col-lg-4 col-md-12">
+                <div class="form-group">
+                    <label class="form-label">操作控制</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button id="loadDataBtn" class="btn btn-primary">
+                            <i class="fas fa-download me-1"></i>加载数据
+                        </button>
+                        <button id="encryptDataBtn" class="btn btn-secondary" disabled>
+                            <i class="fas fa-lock me-1"></i>开始加密
+                        </button>
+                        <button id="decryptDataBtn" class="btn btn-secondary" disabled>
+                            <i class="fas fa-unlock me-1"></i>解密验证
+                        </button>
+                        <button id="exportResultBtn" class="btn btn-secondary" disabled>
+                            <i class="fas fa-file-export me-1"></i>导出结果
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据展示区域 -->
+    <div class="row g-4 mb-4">
+        <!-- 原始数据预览 -->
+        <div class="col-lg-6">
+            <div class="content-card h-100">
+                <h5 class="card-title">
+                    <i class="fas fa-table me-2"></i>原始交易数据
+                </h5>
+                <div id="originalDataContainer" style="height: 400px; overflow-y: auto;">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-database fa-3x mb-3"></i>
+                        <p>请先点击"加载数据"按钮</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 加密数据预览 -->
+        <div class="col-lg-6">
+            <div class="content-card h-100">
+                <h5 class="card-title">
+                    <i class="fas fa-shield-alt me-2"></i>加密后数据
+                </h5>
+                <div id="encryptedDataContainer" style="height: 400px; overflow-y: auto;">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-lock fa-3x mb-3"></i>
+                        <p>加密数据将在此显示</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 性能监控仪表板 -->
+    <div class="content-card mb-4">
+        <h5 class="card-title">
+            <i class="fas fa-chart-line me-2"></i>性能监控仪表板
+        </h5>
+        
+        <!-- 性能指标卡片 -->
+        <div class="row g-3 mb-4">
+            <div class="col-lg-3 col-md-6">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h6 class="text-white-50">总记录数</h6>
+                        <h3 id="totalRecords" class="mb-0">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h6 class="text-white-50">总加密时间</h6>
+                        <h3 id="totalTime" class="mb-0">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                        <h6 class="text-white-50">平均每条</h6>
+                        <h3 id="avgTime" class="mb-0">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="card bg-warning text-white">
+                    <div class="card-body text-center">
+                        <h6 class="text-white-50">数据膨胀率</h6>
+                        <h3 id="expansionRatio" class="mb-0">-</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 性能图表 -->
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="text-center">
+                    <h6>加密时间分布</h6>
+                    <canvas id="encryptionTimeChart" height="200"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="text-center">
+                    <h6>数据大小对比</h6>
+                    <canvas id="dataSizeChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 系统信息 -->
+    <div class="row g-4">
+        <div class="col-md-8">
+            <div class="content-card">
+                <h5 class="card-title">
+                    <i class="fas fa-info-circle me-2"></i>数据集信息
+                </h5>
+                <div id="datasetInfo">
+                    <p class="text-muted">数据集统计信息将在此显示</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="content-card">
+                <h5 class="card-title">
+                    <i class="fas fa-award me-2"></i>算法优势
+                </h5>
+                <div class="alert alert-light border-left-success">
+                    <strong>SM2算法</strong><br>
+                    • 国产化密码标准<br>
+                    • 高效的加密性能<br>
+                    • 强安全性保障<br>
+                    • 适合金融应用
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 进度提示模态框 -->
+    <div class="modal fade" id="progressModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-4">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h5 id="progressTitle">处理中...</h5>
+                    <p id="progressDescription" class="text-muted">请稍候，正在处理您的请求</p>
+                    <div class="progress mt-3">
+                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 引入Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// PKE应用演示系统JavaScript逻辑
+class PKEApplicationDemo {
+    constructor() {
+        this.currentDataset = null;
+        this.encryptedData = null;
+        this.performanceStats = null;
+        this.privateKey = null;
+        this.publicKey = null;
+        this.encryptionChart = null;
+        this.dataSizeChart = null;
+        
+        this.initEventListeners();
+    }
+    
+    initEventListeners() {
+        // 按钮事件绑定
+        document.getElementById('loadDataBtn').addEventListener('click', () => this.loadDataset());
+        document.getElementById('encryptDataBtn').addEventListener('click', () => this.encryptData());
+        document.getElementById('decryptDataBtn').addEventListener('click', () => this.decryptData());
+        document.getElementById('exportResultBtn').addEventListener('click', () => this.exportResults());
+        
+        // 数据集大小变化事件
+        document.getElementById('datasetSize').addEventListener('change', () => {
+            // 重置状态
+            this.resetState();
+        });
+    }
+    
+    resetState() {
+        this.currentDataset = null;
+        this.encryptedData = null;
+        this.performanceStats = null;
+        this.privateKey = null;
+        this.publicKey = null;
+        
+        // 重置按钮状态
+        document.getElementById('encryptDataBtn').disabled = true;
+        document.getElementById('decryptDataBtn').disabled = true;
+        document.getElementById('exportResultBtn').disabled = true;
+        
+        // 清空显示区域
+        document.getElementById('originalDataContainer').innerHTML = 
+            '<div class="text-center text-muted py-5"><i class="fas fa-database fa-3x mb-3"></i><p>请先点击"加载数据"按钮</p></div>';
+        document.getElementById('encryptedDataContainer').innerHTML = 
+            '<div class="text-center text-muted py-5"><i class="fas fa-lock fa-3x mb-3"></i><p>加密数据将在此显示</p></div>';
+        
+        this.clearPerformanceStats();
+    }
+    
+    async loadDataset() {
+        try {
+            this.showProgress('加载数据集', '正在从GitHub下载MinsaPay交易数据...', 20);
+            
+            const size = document.getElementById('datasetSize').value;
+            
+            // 首先尝试下载数据集
+            const downloadResponse = await fetch('/api/pke/dataset/download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ force_download: false })
+            });
+            
+            if (!downloadResponse.ok) {
+                throw new Error('下载数据集失败');
+            }
+            
+            this.updateProgress(60, '数据集下载完成，正在预处理...');
+            
+            // 获取数据预览
+            const previewResponse = await fetch(`/api/pke/dataset/preview?size=${size}&limit=10`);
+            const previewResult = await previewResponse.json();
+            
+            if (previewResult.status !== 'success') {
+                throw new Error(previewResult.message || '获取数据预览失败');
+            }
+            
+            this.currentDataset = previewResult.data;
+            this.updateProgress(100, '数据加载完成！');
+            
+            // 显示原始数据
+            this.displayOriginalData();
+            this.displayDatasetInfo();
+            
+            // 启用加密按钮
+            document.getElementById('encryptDataBtn').disabled = false;
+            
+            setTimeout(() => this.hideProgress(), 1000);
+            
+            this.showToast('success', '数据集加载成功！', 
+                `已加载${this.currentDataset.stats.total_records}条交易记录`);
+            
+        } catch (error) {
+            this.hideProgress();
+            this.showToast('error', '加载失败', error.message);
+            console.error('数据集加载错误:', error);
+        }
+    }
+    
+    displayOriginalData() {
+        const container = document.getElementById('originalDataContainer');
+        
+        if (!this.currentDataset || !this.currentDataset.preview_data) {
+            container.innerHTML = '<p class="text-muted">无数据可显示</p>';
+            return;
+        }
+        
+        const data = this.currentDataset.preview_data;
+        
+        let html = '<div class="table-responsive">';
+        html += '<table class="table table-sm table-hover">';
+        html += '<thead class="table-dark">';
+        html += '<tr>';
+        
+        // 表头
+        if (data.length > 0) {
+            Object.keys(data[0]).forEach(key => {
+                const sensitiveLevel = this.currentDataset.column_info[key]?.sensitive_level || 'none';
+                const badgeClass = this.getSensitiveBadgeClass(sensitiveLevel);
+                html += `<th style="font-size: 0.8rem;">${key} <span class="badge ${badgeClass} ms-1">${sensitiveLevel}</span></th>`;
+            });
+        }
+        
+        html += '</tr></thead><tbody>';
+        
+        // 数据行
+        data.forEach(row => {
+            html += '<tr>';
+            Object.values(row).forEach(value => {
+                // 格式化显示值
+                let displayValue = value;
+                if (typeof value === 'string' && value.includes('T')) {
+                    // 格式化时间戳
+                    displayValue = new Date(value).toLocaleString();
+                } else if (typeof value === 'number' && value > 1000000) {
+                    // 格式化大数值
+                    displayValue = value.toLocaleString();
+                }
+                html += `<td style="font-size: 0.8rem;">${displayValue}</td>`;
+            });
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table>';
+        html += '</div>';
+        
+        container.innerHTML = html;
+    }
+    
+    getSensitiveBadgeClass(level) {
+        switch(level) {
+            case 'high': return 'bg-danger';
+            case 'medium': return 'bg-warning';
+            case 'low': return 'bg-info';
+            default: return 'bg-secondary';
+        }
+    }
+    
+    displayDatasetInfo() {
+        const container = document.getElementById('datasetInfo');
+        const stats = this.currentDataset.stats;
+        
+        let html = '<div class="row g-2">';
+        html += `<div class="col-sm-6"><strong>总记录数:</strong> ${stats.total_records.toLocaleString()}</div>`;
+        html += `<div class="col-sm-6"><strong>用户数:</strong> ${stats.total_users.toLocaleString()}</div>`;
+        html += `<div class="col-sm-6"><strong>商户数:</strong> ${stats.total_booths.toLocaleString()}</div>`;
+        html += `<div class="col-sm-6"><strong>交易总额:</strong> ${stats.total_amount.toLocaleString()}</div>`;
+        html += '</div>';
+        
+        // 交易类型分布
+        html += '<div class="mt-3"><strong>交易类型分布:</strong><ul class="list-unstyled mt-2">';
+        Object.entries(stats.transaction_types).forEach(([type, count]) => {
+            html += `<li><span class="badge bg-light text-dark me-2">${type}</span>${count}笔</li>`;
+        });
+        html += '</ul></div>';
+        
+        container.innerHTML = html;
+    }
+    
+    async encryptData() {
+        try {
+            this.showProgress('加密数据', '正在使用SM2算法加密敏感字段...', 10);
+            
+            const size = document.getElementById('datasetSize').value;
+            const selectedFields = this.getSelectedFields();
+            
+            if (selectedFields.length === 0) {
+                throw new Error('请至少选择一个需要加密的字段');
+            }
+            
+            this.updateProgress(30, '正在批量加密交易数据...');
+            
+            const response = await fetch('/api/pke/encrypt_transactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    size: size,
+                    fields: selectedFields
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.status !== 'success') {
+                throw new Error(result.error || '加密失败');
+            }
+            
+            this.encryptedData = result.data.encrypted_data;
+            this.performanceStats = result.data.performance_stats;
+            this.privateKey = result.data.private_key;
+            this.publicKey = result.data.public_key;
+            
+            this.updateProgress(90, '加密完成，正在更新界面...');
+            
+            // 显示加密数据
+            this.displayEncryptedData();
+            this.updatePerformanceStats();
+            this.initializeCharts();
+            
+            // 启用解密和导出按钮
+            document.getElementById('decryptDataBtn').disabled = false;
+            document.getElementById('exportResultBtn').disabled = false;
+            
+            this.updateProgress(100, '加密完成！');
+            setTimeout(() => this.hideProgress(), 1000);
+            
+            this.showToast('success', '加密成功！', 
+                `已加密${this.performanceStats.total_records}条记录，耗时${this.performanceStats.total_time.toFixed(2)}ms`);
+            
+        } catch (error) {
+            this.hideProgress();
+            this.showToast('error', '加密失败', error.message);
+            console.error('加密错误:', error);
+        }
+    }
+    
+    getSelectedFields() {
+        const fields = [];
+        document.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
+            fields.push(checkbox.value);
+        });
+        return fields;
+    }
+    
+    displayEncryptedData() {
+        const container = document.getElementById('encryptedDataContainer');
+        
+        if (!this.encryptedData) {
+            container.innerHTML = '<p class="text-muted">无加密数据可显示</p>';
+            return;
+        }
+        
+        let html = '<div class="table-responsive">';
+        html += '<table class="table table-sm table-hover">';
+        html += '<thead class="table-dark">';
+        html += '<tr>';
+        
+        // 表头
+        if (this.encryptedData.length > 0) {
+            Object.keys(this.encryptedData[0]).forEach(key => {
+                if (key.startsWith('_')) return; // 跳过内部字段
+                const isEncrypted = this.encryptedData[0]._encrypted_fields?.includes(key);
+                const badge = isEncrypted ? '<span class="badge bg-success ms-1">已加密</span>' : '';
+                html += `<th style="font-size: 0.8rem;">${key}${badge}</th>`;
+            });
+        }
+        
+        html += '</tr></thead><tbody>';
+        
+        // 数据行
+        this.encryptedData.forEach(row => {
+            html += '<tr>';
+            Object.entries(row).forEach(([key, value]) => {
+                if (key.startsWith('_')) return; // 跳过内部字段
+                
+                let displayValue = value;
+                const isEncrypted = row._encrypted_fields?.includes(key);
+                
+                if (isEncrypted && typeof value === 'string' && value.length > 20) {
+                    // 加密字段显示前后几个字符
+                    displayValue = `${value.substring(0, 8)}...${value.substring(value.length - 8)}`;
+                    displayValue = `<span class="text-success font-monospace">${displayValue}</span>`;
+                } else if (typeof value === 'string' && value.includes('T')) {
+                    // 格式化时间戳
+                    displayValue = new Date(value).toLocaleString();
+                } else if (typeof value === 'number' && value > 1000000) {
+                    // 格式化大数值
+                    displayValue = value.toLocaleString();
+                }
+                
+                html += `<td style="font-size: 0.8rem;">${displayValue}</td>`;
+            });
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table>';
+        html += '</div>';
+        
+        container.innerHTML = html;
+    }
+    
+    updatePerformanceStats() {
+        if (!this.performanceStats) return;
+        
+        document.getElementById('totalRecords').textContent = this.performanceStats.total_records.toLocaleString();
+        document.getElementById('totalTime').textContent = `${this.performanceStats.total_time.toFixed(2)}ms`;
+        document.getElementById('avgTime').textContent = `${this.performanceStats.avg_time_per_record.toFixed(3)}ms`;
+        document.getElementById('expansionRatio').textContent = `${this.performanceStats.size_expansion_ratio.toFixed(1)}x`;
+    }
+    
+    clearPerformanceStats() {
+        document.getElementById('totalRecords').textContent = '-';
+        document.getElementById('totalTime').textContent = '-';
+        document.getElementById('avgTime').textContent = '-';
+        document.getElementById('expansionRatio').textContent = '-';
+    }
+    
+    initializeCharts() {
+        // 清理已有的图表
+        if (this.encryptionChart) {
+            this.encryptionChart.destroy();
+        }
+        if (this.dataSizeChart) {
+            this.dataSizeChart.destroy();
+        }
+        
+        // 加密时间分布图
+        const encryptionCtx = document.getElementById('encryptionTimeChart').getContext('2d');
+        this.encryptionChart = new Chart(encryptionCtx, {
+            type: 'line',
+            data: {
+                labels: this.performanceStats.encryption_times.map((_, i) => `记录${i + 1}`),
+                datasets: [{
+                    label: '加密时间 (ms)',
+                    data: this.performanceStats.encryption_times,
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '加密时间分布'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '时间 (毫秒)'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 数据大小对比图
+        const dataSizeCtx = document.getElementById('dataSizeChart').getContext('2d');
+        this.dataSizeChart = new Chart(dataSizeCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['原始数据', '加密数据'],
+                datasets: [{
+                    data: [this.performanceStats.original_size, this.performanceStats.encrypted_size],
+                    backgroundColor: ['rgb(54, 162, 235)', 'rgb(255, 99, 132)']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '数据大小对比'
+                    }
+                }
+            }
+        });
+    }
+    
+    async decryptData() {
+        try {
+            this.showProgress('解密验证', '正在解密数据并验证完整性...', 20);
+            
+            const response = await fetch('/api/pke/decrypt_transactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    encrypted_data: this.encryptedData,
+                    private_key: this.privateKey
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.status !== 'success') {
+                throw new Error(result.error || '解密失败');
+            }
+            
+            this.updateProgress(100, '解密验证完成！');
+            
+            const decryptStats = result.data.performance_stats;
+            
+            setTimeout(() => this.hideProgress(), 1000);
+            
+            this.showToast('success', '解密验证成功！', 
+                `成功率: ${(decryptStats.success_rate * 100).toFixed(1)}%，平均解密时间: ${decryptStats.avg_time_per_record.toFixed(3)}ms`);
+            
+        } catch (error) {
+            this.hideProgress();
+            this.showToast('error', '解密验证失败', error.message);
+            console.error('解密错误:', error);
+        }
+    }
+    
+    async exportResults() {
+        try {
+            this.showProgress('导出结果', '正在生成导出文件...', 50);
+            
+            const response = await fetch('/api/pke/export_results', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    encrypted_data: this.encryptedData,
+                    format: 'csv'
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.status !== 'success') {
+                throw new Error(result.error || '导出失败');
+            }
+            
+            // 创建下载链接
+            const blob = new Blob([result.data.content], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = result.data.filename;
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            this.updateProgress(100, '导出完成！');
+            setTimeout(() => this.hideProgress(), 1000);
+            
+            this.showToast('success', '导出成功！', `文件已保存为: ${result.data.filename}`);
+            
+        } catch (error) {
+            this.hideProgress();
+            this.showToast('error', '导出失败', error.message);
+            console.error('导出错误:', error);
+        }
+    }
+    
+    // 工具方法
+    showProgress(title, description, progress = 0) {
+        document.getElementById('progressTitle').textContent = title;
+        document.getElementById('progressDescription').textContent = description;
+        document.getElementById('progressBar').style.width = `${progress}%`;
+        
+        try {
+            const modal = new bootstrap.Modal(document.getElementById('progressModal'));
+            modal.show();
+        } catch (error) {
+            console.error('Bootstrap modal error:', error);
+            // 降级到简单的显示方式
+            document.getElementById('progressModal').style.display = 'block';
+            document.getElementById('progressModal').classList.add('show');
+        }
+    }
+    
+    updateProgress(progress, description = null) {
+        document.getElementById('progressBar').style.width = `${progress}%`;
+        if (description) {
+            document.getElementById('progressDescription').textContent = description;
+        }
+    }
+    
+    hideProgress() {
+        try {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('progressModal'));
+            if (modal) {
+                modal.hide();
+            } else {
+                // 降级处理
+                document.getElementById('progressModal').style.display = 'none';
+                document.getElementById('progressModal').classList.remove('show');
+            }
+        } catch (error) {
+            console.error('Bootstrap modal hide error:', error);
+            // 降级处理
+            document.getElementById('progressModal').style.display = 'none';
+            document.getElementById('progressModal').classList.remove('show');
+        }
+    }
+    
+    showToast(type, title, message) {
+        // 简化的提示实现
+        const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+        const icon = type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle';
+        
+        const toastHtml = `
+            <div class="alert ${alertClass} alert-dismissible fade show position-fixed" 
+                 style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                <i class="${icon} me-2"></i>
+                <strong>${title}</strong><br>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        
+        const toastContainer = document.createElement('div');
+        toastContainer.innerHTML = toastHtml;
+        document.body.appendChild(toastContainer);
+        
+        // 自动移除
+        setTimeout(() => {
+            if (toastContainer.parentNode) {
+                toastContainer.parentNode.removeChild(toastContainer);
+            }
+        }, 5000);
+    }
+}
+
+// 初始化应用
+document.addEventListener('DOMContentLoaded', function() {
+    new PKEApplicationDemo();
+});
+</script>
+{% endblock %} 
