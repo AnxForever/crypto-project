@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+
+{% block title %}性能分析 - 密码学工具平台{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title"><i class="fas fa-chart-bar"></i> 性能分析</h1>
+    <p class="page-description">
+        分析PKE和IBE算法的性能表现，包括加密速度和资源消耗等指标。
+    </p>
+</div>
+
+<!-- 快速性能测试 -->
+<div class="content-card">
+    <h2 class="card-title"><i class="fas fa-stopwatch"></i> 性能测试</h2>
+    <div class="form-group">
+        <label class="form-label">测试消息:</label>
+        <textarea class="form-control" id="testMessage" rows="3">这是用于性能测试的示例消息，用来评估不同算法的加密解密速度。</textarea>
+    </div>
+    
+    <button class="btn btn-primary" onclick="runAllTests()" id="testBtn">
+        <i class="fas fa-play"></i> 开始性能测试
+    </button>
+    
+    <div id="testProgress" style="display: none; margin-top: 20px;">
+        <div style="background: #f8f9fa; border-radius: 10px; padding: 20px;">
+            <div id="currentTest" style="color: #666; font-size: 14px;">准备测试...</div>
+            <div style="background: #e0e0e0; border-radius: 5px; overflow: hidden; height: 8px; margin-top: 10px;">
+                <div id="progressBar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 测试结果 -->
+<div class="content-card" id="resultsSection" style="display: none;">
+    <h2 class="card-title"><i class="fas fa-chart-line"></i> 测试结果</h2>
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-key"></i></div>
+            <div class="stat-number" id="eccResult">-</div>
+            <div class="stat-label">ECIES 耗时 (ms)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-key"></i></div>
+            <div class="stat-number" id="elgamalResult">-</div>
+            <div class="stat-label">ElGamal 耗时 (ms)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-key"></i></div>
+            <div class="stat-number" id="sm2Result">-</div>
+            <div class="stat-label">SM2 耗时 (ms)</div>
+        </div>
+    </div>
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-user-shield"></i></div>
+            <div class="stat-number" id="bfResult">-</div>
+            <div class="stat-label">Boneh-Franklin 耗时 (ms)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-user-shield"></i></div>
+            <div class="stat-number" id="bbResult">-</div>
+            <div class="stat-label">Boneh-Boyen 耗时 (ms)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-user-shield"></i></div>
+            <div class="stat-number" id="skResult">-</div>
+            <div class="stat-label">Sakai-Kasahara 耗时 (ms)</div>
+        </div>
+    </div>
+    
+    <div id="winner" style="margin-top: 30px; text-align: center;">
+        <div class="alert alert-success" id="winnerAlert" style="display: none;">
+            <h4>🏆 性能最优</h4>
+            <p id="winnerText"></p>
+        </div>
+    </div>
+</div>
+
+<!-- 算法特性对比 -->
+<div class="content-card">
+    <h2 class="card-title"><i class="fas fa-balance-scale"></i> 算法特性对比</h2>
+    
+    <div class="tool-grid">
+        <div>
+            <h4>PKE算法特性</h4>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <strong>ECIES:</strong> 椭圆曲线集成加密，高安全性，256位密钥
+                </div>
+                <div class="feature-item">
+                    <strong>ElGamal:</strong> 基于离散对数，概率性加密，支持同态
+                </div>
+                <div class="feature-item">
+                    <strong>SM2:</strong> 国密标准，椭圆曲线，国产自主可控
+                </div>
+            </div>
+        </div>
+        
+        <div>
+            <h4>IBE算法特性</h4>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <strong>Boneh-Franklin:</strong> 首个实用IBE方案，随机预言机模型
+                </div>
+                <div class="feature-item">
+                    <strong>Boneh-Boyen:</strong> 标准模型安全，双主密钥结构
+                </div>
+                <div class="feature-item">
+                    <strong>Sakai-Kasahara:</strong> 高效实现，紧凑密文，流密码
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 专项性能分析入口 -->
+<div class="content-card">
+    <h2 class="card-title"><i class="fas fa-chart-line"></i> 详细性能分析</h2>
+    <p style="color: #666; margin-bottom: 25px; text-align: center;">
+        基于真实算法库测试数据的深度性能分析图表，专注算法内部对比。
+    </p>
+    
+    <div class="analysis-links">
+        <a href="/pke-analysis" class="analysis-link-card">
+            <div class="analysis-icon">
+                <i class="fas fa-key"></i>
+            </div>
+            <div class="analysis-content">
+                <h3>PKE算法专项分析</h3>
+                <p>ECC、ElGamal、SM2三种公钥加密算法的全面性能对比</p>
+                <div class="analysis-features">
+                    <span class="feature-tag">性能全景</span>
+                    <span class="feature-tag">效率分析</span>
+                    <span class="feature-tag">规模适应</span>
+                </div>
+            </div>
+            <div class="analysis-arrow">
+                <i class="fas fa-arrow-right"></i>
+            </div>
+        </a>
+        
+        <a href="/ibe-analysis" class="analysis-link-card">
+            <div class="analysis-icon">
+                <i class="fas fa-user-shield"></i>
+            </div>
+            <div class="analysis-content">
+                <h3>IBE算法专项分析</h3>
+                <p>Boneh-Franklin、Boneh-Boyen、Sakai-Kasahara三种身份加密算法对比</p>
+                <div class="analysis-features">
+                    <span class="feature-tag">性能全景</span>
+                    <span class="feature-tag">效率分析</span>
+                    <span class="feature-tag">消息适应</span>
+                </div>
+            </div>
+            <div class="analysis-arrow">
+                <i class="fas fa-arrow-right"></i>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- 算法选择建议 -->
+<div class="content-card">
+    <h2 class="card-title"><i class="fas fa-lightbulb"></i> 算法选择建议</h2>
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-rocket"></i>
+            </div>
+            <div class="feature-title">高性能场景</div>
+            <div class="feature-description">
+                推荐使用SM2算法，密钥生成极快，整体性能优异，适合高频次操作。
+            </div>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <div class="feature-title">安全性优先</div>
+            <div class="feature-description">
+                对于安全性要求极高的场景，建议使用ECC或SM2国密算法。
+            </div>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="feature-title">身份管理</div>
+            <div class="feature-description">
+                需要简化密钥管理时，IBE算法提供基于身份的加密方案。Sakai-Kasahara性能最优。
+            </div>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-globe"></i>
+            </div>
+            <div class="feature-title">标准兼容</div>
+            <div class="feature-description">
+                考虑国际标准兼容性和国内合规要求，选择适合的算法。
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // 运行所有测试
+    async function runAllTests() {
+        const message = document.getElementById('testMessage').value.trim();
+        if (!message) {
+            showAlert('请输入测试消息', 'warning');
+            return;
+        }
+        
+        const testBtn = document.getElementById('testBtn');
+        testBtn.disabled = true;
+        testBtn.innerHTML = '<span class="loading"></span> 测试中...';
+        document.getElementById('testProgress').style.display = 'block';
+        
+        const algorithms = [
+            { name: 'ECC', type: 'pke', resultId: 'eccResult' },
+            { name: 'ELGAMAL', type: 'pke', resultId: 'elgamalResult' },
+            { name: 'SM2', type: 'pke', resultId: 'sm2Result' },
+                            { name: 'boneh_franklin', type: 'ibe', resultId: 'bfResult' },
+            { name: 'boneh_boyen', type: 'ibe', resultId: 'bbResult' },
+            { name: 'sakai_kasahara', type: 'ibe', resultId: 'skResult' }
+        ];
+        
+        const results = {};
+        let bestTime = Infinity;
+        let bestAlgorithm = '';
+        
+        for (let i = 0; i < algorithms.length; i++) {
+            const algorithm = algorithms[i];
+            
+            // 更新进度
+            document.getElementById('currentTest').textContent = `正在测试 ${algorithm.name}...`;
+            document.getElementById('progressBar').style.width = `${((i + 1) / algorithms.length) * 100}%`;
+            
+            try {
+                const duration = await testSingleAlgorithm(algorithm, message);
+                results[algorithm.name] = duration;
+                document.getElementById(algorithm.resultId).textContent = duration.toFixed(2);
+                
+                if (duration < bestTime) {
+                    bestTime = duration;
+                    bestAlgorithm = algorithm.name;
+                }
+            } catch (error) {
+                console.error(`测试 ${algorithm.name} 失败:`, error);
+                document.getElementById(algorithm.resultId).textContent = '错误';
+            }
+            
+            // 短暂延迟
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // 显示结果
+        document.getElementById('resultsSection').style.display = 'block';
+        
+        if (bestAlgorithm) {
+            document.getElementById('winnerAlert').style.display = 'block';
+            document.getElementById('winnerText').textContent = 
+                `在此次测试中，${bestAlgorithm} 算法表现最佳，总耗时 ${bestTime.toFixed(2)} 毫秒`;
+        }
+        
+        testBtn.disabled = false;
+        testBtn.innerHTML = '<i class="fas fa-play"></i> 开始性能测试';
+        document.getElementById('testProgress').style.display = 'none';
+        
+        showAlert('性能测试完成！', 'success');
+    }
+    
+    // 测试单个算法
+    async function testSingleAlgorithm(algorithm, message) {
+        const startTime = performance.now();
+        
+        if (algorithm.type === 'pke') {
+            // PKE测试
+            const keyResponse = await fetch('/api/pke/generate-keys', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scheme: algorithm.name })
+            });
+            
+            const keyData = await keyResponse.json();
+            if (keyData.status !== 'success') {
+                throw new Error('密钥生成失败');
+            }
+            
+            // 获取公钥
+            let publicKey;
+            if (algorithm.name === 'ELGAMAL') {
+                publicKey = keyData.keys.public_key;
+            } else if (algorithm.name === 'SM2') {
+                publicKey = keyData.keys.public_key;
+            } else {
+                publicKey = keyData.keys[1];
+            }
+            
+            // 加密
+            const encryptResponse = await fetch('/api/pke/encrypt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    scheme: algorithm.name,
+                    message: message,
+                    public_key: publicKey
+                })
+            });
+            
+            const encryptData = await encryptResponse.json();
+            if (encryptData.status !== 'success') {
+                throw new Error('加密失败');
+            }
+            
+        } else {
+            // IBE测试
+            const setupResponse = await fetch('/api/ibe/setup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scheme: algorithm.name })
+            });
+            
+            const setupData = await setupResponse.json();
+            if (setupData.status !== 'success') {
+                throw new Error('IBE系统设置失败');
+            }
+            
+            // 加密
+            const encryptResponse = await fetch('/api/ibe/encrypt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    scheme: algorithm.name,
+                    identity: 'test@example.com',
+                    message: message
+                })
+            });
+            
+            const encryptData = await encryptResponse.json();
+            if (encryptData.status !== 'success') {
+                throw new Error('IBE加密失败');
+            }
+        }
+        
+        const endTime = performance.now();
+        return endTime - startTime;
+    }
+</script>
+
+<style>
+    .feature-list {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+    }
+    
+    .feature-item {
+        padding: 10px 0;
+        border-bottom: 1px solid #eee;
+        color: #555;
+        line-height: 1.6;
+    }
+    
+    .feature-item:last-child {
+        border-bottom: none;
+    }
+    
+    .alert {
+        border-radius: 15px;
+        border: none;
+        padding: 20px;
+    }
+    
+    .alert-success {
+        background: rgba(76, 175, 80, 0.1);
+        color: #2e7d32;
+        border-left: 4px solid #4caf50;
+    }
+    
+    /* 专项分析链接样式 */
+    .analysis-links {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 25px;
+    }
+    
+    .analysis-link-card {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 25px;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.3s ease;
+    }
+    
+    .analysis-link-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 40px rgba(31, 38, 135, 0.25);
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .analysis-icon {
+        flex-shrink: 0;
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        color: white;
+        font-size: 1.8rem;
+    }
+    
+    .analysis-content {
+        flex: 1;
+    }
+    
+    .analysis-content h3 {
+        color: #333;
+        margin-bottom: 8px;
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+    
+    .analysis-content p {
+        color: #666;
+        margin-bottom: 12px;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+    
+    .analysis-features {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    
+    .feature-tag {
+        background: rgba(102, 126, 234, 0.1);
+        color: #667eea;
+        padding: 4px 10px;
+        border-radius: 15px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        border: 1px solid rgba(102, 126, 234, 0.2);
+    }
+    
+    .analysis-arrow {
+        flex-shrink: 0;
+        color: #667eea;
+        font-size: 1.2rem;
+        opacity: 0.7;
+        transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    
+    .analysis-link-card:hover .analysis-arrow {
+        transform: translateX(5px);
+        opacity: 1;
+    }
+    
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+        .analysis-links {
+            grid-template-columns: 1fr;
+        }
+        
+        .analysis-link-card {
+            padding: 20px;
+        }
+        
+        .analysis-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 1.5rem;
+        }
+        
+        .analysis-content h3 {
+            font-size: 1.1rem;
+        }
+    }
+</style>
+{% endblock %} 

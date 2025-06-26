@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+
+{% block title %}IBE应用演示 - 密码学工具平台{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title"><i class="fas fa-user-shield"></i> IBE应用演示</h1>
+    <p class="page-description">
+        展示基于身份加密系统的实际应用场景，体验IBE技术的独特优势。
+    </p>
+</div>
+
+<!-- 企业邮件加密演示 -->
+<div class="content-card">
+    <h2 class="card-title"><i class="fas fa-building"></i> 企业邮件加密场景</h2>
+    <p style="color: #666; margin-bottom: 20px;">
+        模拟企业内部邮件加密场景，使用员工邮箱地址作为身份标识符，无需事先交换公钥。
+    </p>
+    
+    <div class="tool-grid">
+        <div>
+            <h4>发送方 (HR部门)</h4>
+            <div class="form-group">
+                <label class="form-label">发送人邮箱:</label>
+                <input type="email" class="form-control" id="senderEmail" value="hr@company.com" readonly>
+            </div>
+            <div class="form-group">
+                <label class="form-label">接收人邮箱:</label>
+                <input type="email" class="form-control" id="receiverEmail" value="alice@company.com">
+            </div>
+            <div class="form-group">
+                <label class="form-label">机密消息:</label>
+                <textarea class="form-control" id="confidentialMessage" rows="4">员工Alice：您的薪资调整已获批准，新薪资为8000元/月，于下月生效。请保密处理。</textarea>
+            </div>
+            <button class="btn btn-primary" onclick="sendEmailMessage()">
+                <i class="fas fa-envelope"></i> 发送加密邮件
+            </button>
+        </div>
+        
+        <div>
+            <h4>接收方 (员工Alice)</h4>
+            <div class="form-group">
+                <label class="form-label">收到的加密邮件:</label>
+                <textarea class="form-control" id="encryptedEmail" rows="4" readonly placeholder="加密邮件内容将显示在这里..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Alice的身份验证:</label>
+                <input type="email" class="form-control" id="aliceIdentity" value="alice@company.com" readonly>
+            </div>
+            <button class="btn btn-primary" onclick="decryptEmailMessage()" id="decryptEmailBtn" disabled>
+                <i class="fas fa-key"></i> 使用身份私钥解密
+            </button>
+            <div class="output-area" id="decryptedEmail" style="margin-top: 15px;">解密后的邮件内容将显示在这里...</div>
+        </div>
+    </div>
+</div>
+
+<!-- 医疗数据共享演示 -->
+<div class="content-card">
+    <h2 class="card-title"><i class="fas fa-user-md"></i> 医疗数据共享场景</h2>
+    <p style="color: #666; margin-bottom: 20px;">
+        演示医院间患者数据安全共享，使用患者身份证号码作为加密标识。
+    </p>
+    
+    <div class="tool-grid">
+        <div>
+            <h4>A医院 (数据提供方)</h4>
+            <div class="form-group">
+                <label class="form-label">患者身份证号:</label>
+                <input type="text" class="form-control" id="patientId" value="320123199001011234">
+            </div>
+            <div class="form-group">
+                <label class="form-label">医疗数据:</label>
+                <textarea class="form-control" id="medicalData" rows="4">患者：张三，血型：O型，过敏史：青霉素过敏，诊断：轻度高血压，处方：降压药物治疗。</textarea>
+            </div>
+            <button class="btn btn-primary" onclick="shareMedicalData()">
+                <i class="fas fa-share"></i> 安全共享数据
+            </button>
+        </div>
+        
+        <div>
+            <h4>B医院 (数据接收方)</h4>
+            <div class="form-group">
+                <label class="form-label">收到的加密数据:</label>
+                <textarea class="form-control" id="encryptedMedicalData" rows="4" readonly placeholder="加密的医疗数据将显示在这里..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">患者身份验证:</label>
+                <input type="text" class="form-control" id="patientVerification" value="320123199001011234" readonly>
+            </div>
+            <button class="btn btn-primary" onclick="accessMedicalData()" id="accessDataBtn" disabled>
+                <i class="fas fa-stethoscope"></i> 访问患者数据
+            </button>
+            <div class="output-area" id="decryptedMedicalData" style="margin-top: 15px;">解密后的医疗数据将显示在这里...</div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- 系统初始化按钮 -->
+<div style="text-align: center; margin-top: 30px;">
+    <button class="btn btn-secondary" onclick="initializeIBESystem()" id="initBtn">
+        <i class="fas fa-cog"></i> 初始化IBE演示系统
+    </button>
+    <div id="systemStatus" style="margin-top: 15px; display: none;">
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i> IBE演示系统已就绪
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let ibeSystemReady = false;
+
+    // 初始化IBE系统
+    async function initializeIBESystem() {
+        const btn = document.getElementById('initBtn');
+        const originalText = btn.innerHTML;
+        
+        try {
+            btn.innerHTML = '<span class="loading"></span> 初始化中...';
+            btn.disabled = true;
+            
+            const response = await fetch('/api/ibe/setup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scheme: 'boneh_franklin' })
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                ibeSystemReady = true;
+                document.getElementById('systemStatus').style.display = 'block';
+                showAlert('IBE演示系统初始化成功！', 'success');
+            } else {
+                throw new Error(data.error || '系统初始化失败');
+            }
+        } catch (error) {
+            showAlert('系统初始化失败: ' + error.message, 'error');
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    // 发送加密邮件
+    async function sendEmailMessage() {
+        if (!ibeSystemReady) {
+            showAlert('请先初始化IBE系统', 'warning');
+            return;
+        }
+        
+        const receiverEmail = document.getElementById('receiverEmail').value.trim();
+        const message = document.getElementById('confidentialMessage').value.trim();
+        
+        if (!receiverEmail || !message) {
+            showAlert('请输入接收方邮箱和消息内容', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/ibe/encrypt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    scheme: 'boneh_franklin',
+                    identity: receiverEmail,
+                    message: message
+                })
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                const ciphertext = typeof data.ciphertext === 'object' ? 
+                    JSON.stringify(data.ciphertext, null, 2) : data.ciphertext;
+                
+                document.getElementById('encryptedEmail').value = ciphertext;
+                document.getElementById('decryptEmailBtn').disabled = false;
+                
+                showAlert(`邮件已成功加密并发送给 ${receiverEmail}`, 'success');
+            } else {
+                throw new Error(data.error || '邮件加密失败');
+            }
+        } catch (error) {
+            showAlert('邮件发送失败: ' + error.message, 'error');
+        }
+    }
+
+    // 解密邮件消息
+    async function decryptEmailMessage() {
+        const identity = document.getElementById('aliceIdentity').value.trim();
+        const encryptedMessage = document.getElementById('encryptedEmail').value.trim();
+        
+        if (!encryptedMessage) {
+            showAlert('没有收到加密邮件', 'warning');
+            return;
+        }
+        
+        try {
+            // 首先提取Alice的私钥
+            const extractResponse = await fetch('/api/ibe/extract', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    scheme: 'boneh_franklin',
+                    identity: identity
+                })
+            });
+            
+            const extractData = await extractResponse.json();
+            if (extractData.status !== 'success') {
+                throw new Error('身份验证失败');
+            }
+            
+            // 然后解密消息
+            let ciphertextData;
+            try {
+                ciphertextData = JSON.parse(encryptedMessage);
+            } catch {
+                ciphertextData = encryptedMessage;
+            }
+            
+            const decryptResponse = await fetch('/api/ibe/decrypt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    scheme: 'boneh_franklin',
+                    private_key: extractData.private_key,
+                    ciphertext: ciphertextData
+                })
+            });
+            
+            const decryptData = await decryptResponse.json();
+            if (decryptData.status === 'success') {
+                document.getElementById('decryptedEmail').innerHTML = `
+                    <div style="background: #f0f8f0; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
+                        <h5 style="color: #2e7d32; margin-bottom: 10px;">📧 邮件解密成功</h5>
+                        <p style="margin: 0;">${decryptData.plaintext}</p>
+                    </div>
+                `;
+                showAlert('Alice成功解密了HR的机密邮件！', 'success');
+            } else {
+                throw new Error(decryptData.error || '邮件解密失败');
+            }
+        } catch (error) {
+            showAlert('解密失败: ' + error.message, 'error');
+        }
+    }
+
+    // 共享医疗数据
+    async function shareMedicalData() {
+        if (!ibeSystemReady) {
+            showAlert('请先初始化IBE系统', 'warning');
+            return;
+        }
+        
+        const patientId = document.getElementById('patientId').value.trim();
+        const medicalData = document.getElementById('medicalData').value.trim();
+        
+        if (!patientId || !medicalData) {
+            showAlert('请输入患者身份证号和医疗数据', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/ibe/encrypt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    scheme: 'boneh_franklin',
+                    identity: patientId,
+                    message: medicalData
+                })
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                const ciphertext = typeof data.ciphertext === 'object' ? 
+                    JSON.stringify(data.ciphertext, null, 2) : data.ciphertext;
+                
+                document.getElementById('encryptedMedicalData').value = ciphertext;
+                document.getElementById('accessDataBtn').disabled = false;
+                
+                showAlert('医疗数据已安全加密，可供B医院访问', 'success');
+            } else {
+                throw new Error(data.error || '数据加密失败');
+            }
+        } catch (error) {
+            showAlert('数据共享失败: ' + error.message, 'error');
+        }
+    }
+
+    // 访问医疗数据
+    async function accessMedicalData() {
+        const patientId = document.getElementById('patientVerification').value.trim();
+        const encryptedData = document.getElementById('encryptedMedicalData').value.trim();
+        
+        if (!encryptedData) {
+            showAlert('没有收到加密的医疗数据', 'warning');
+            return;
+        }
+        
+        try {
+            // 首先为患者身份提取私钥
+            const extractResponse = await fetch('/api/ibe/extract', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    scheme: 'boneh_franklin',
+                    identity: patientId
+                })
+            });
+            
+            const extractData = await extractResponse.json();
+            if (extractData.status !== 'success') {
+                throw new Error('患者身份验证失败');
+            }
+            
+            // 然后解密医疗数据
+            let ciphertextData;
+            try {
+                ciphertextData = JSON.parse(encryptedData);
+            } catch {
+                ciphertextData = encryptedData;
+            }
+            
+            const decryptResponse = await fetch('/api/ibe/decrypt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    scheme: 'boneh_franklin',
+                    private_key: extractData.private_key,
+                    ciphertext: ciphertextData
+                })
+            });
+            
+            const decryptData = await decryptResponse.json();
+            if (decryptData.status === 'success') {
+                document.getElementById('decryptedMedicalData').innerHTML = `
+                    <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; border-left: 4px solid #2196f3;">
+                        <h5 style="color: #1565c0; margin-bottom: 10px;">🏥 医疗数据访问成功</h5>
+                        <p style="margin: 0;">${decryptData.plaintext}</p>
+                    </div>
+                `;
+                showAlert('B医院成功访问了患者的医疗数据！', 'success');
+            } else {
+                throw new Error(decryptData.error || '数据解密失败');
+            }
+        } catch (error) {
+            showAlert('数据访问失败: ' + error.message, 'error');
+        }
+    }
+
+    // 页面加载时自动初始化系统
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(initializeIBESystem, 1000);
+    });
+</script>
+{% endblock %} 

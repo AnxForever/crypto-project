@@ -1,0 +1,889 @@
+{% extends "base.html" %}
+
+{% block title %}PKE应用演示 - 密码学工具平台{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title"><i class="fas fa-play-circle"></i> PKE应用演示</h1>
+    <p class="page-description">
+        PKE加密算法的实际应用场景演示，支持消息加密、文件处理、密钥管理等功能。
+    </p>
+</div>
+
+<!-- 算法选择器 -->
+<div class="content-card">
+    <h2 class="card-title"><i class="fas fa-cogs"></i> 选择加密算法</h2>
+    <div class="algorithm-selector">
+        <div class="algorithm-option active" data-algorithm="ECC">
+            <i class="fas fa-shield-alt"></i>
+            <span>ECC</span>
+        </div>
+        <div class="algorithm-option" data-algorithm="ELGAMAL">
+            <i class="fas fa-calculator"></i>
+            <span>ElGamal</span>
+        </div>
+        <div class="algorithm-option" data-algorithm="SM2">
+            <i class="fas fa-flag"></i>
+            <span>SM2</span>
+        </div>
+    </div>
+    <div class="algorithm-info" id="algorithmInfo">
+        当前选择：ECC（椭圆曲线加密）- 高安全性，广泛应用
+    </div>
+</div>
+
+<!-- 密钥管理 -->
+<div class="content-card">
+    <h2 class="card-title"><i class="fas fa-key"></i> 密钥管理</h2>
+    <div class="key-management">
+        <button class="btn btn-primary" onclick="generateDemoKeys()">
+            <i class="fas fa-plus"></i> 生成新密钥对
+        </button>
+        <button class="btn btn-secondary" onclick="exportKeys()" id="exportBtn" disabled>
+            <i class="fas fa-download"></i> 导出密钥
+        </button>
+        <button class="btn btn-secondary" onclick="importKeys()">
+            <i class="fas fa-upload"></i> 导入密钥
+        </button>
+        <button class="btn btn-warning" onclick="clearKeys()">
+            <i class="fas fa-trash"></i> 清除密钥
+        </button>
+    </div>
+    <div class="key-status" id="keyStatus">
+        <i class="fas fa-info-circle"></i> 请先生成或导入密钥对
+    </div>
+</div>
+
+<!-- 消息传输演示 -->
+<div class="content-card">
+    <h2 class="card-title"><i class="fas fa-envelope-open-text"></i> 安全消息传输</h2>
+    <div class="tool-grid">
+        <div>
+            <h4><i class="fas fa-user"></i> 发送方</h4>
+            <div class="form-group">
+                <label class="form-label">消息内容:</label>
+                <textarea class="form-control" id="aliceMessage" rows="4" placeholder="输入要加密的消息...">这是一条需要加密传输的重要消息。</textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">消息类型:</label>
+                <select class="form-control" id="messageType">
+                    <option value="text">普通文本</option>
+                    <option value="confidential">机密信息</option>
+                    <option value="financial">财务数据</option>
+                    <option value="personal">个人隐私</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="sendMessage()" id="sendBtn" disabled>
+                <i class="fas fa-paper-plane"></i> 发送加密消息
+            </button>
+        </div>
+        
+        <div>
+            <h4><i class="fas fa-user-shield"></i> 接收方</h4>
+            <div class="form-group">
+                <label class="form-label">收到的密文:</label>
+                <textarea class="form-control" id="receivedCiphertext" rows="4" readonly placeholder="等待接收加密消息..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">密文信息:</label>
+                <div class="ciphertext-info" id="ciphertextInfo">
+                    <span class="info-item">长度: <span id="ciphertextLength">-</span></span>
+                    <span class="info-item">算法: <span id="ciphertextAlgorithm">-</span></span>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="receiveMessage()" id="decryptBtn" disabled>
+                <i class="fas fa-unlock"></i> 解密消息
+            </button>
+            <div class="output-area" id="decryptedMessage" style="margin-top: 15px;">解密结果将显示在这里...</div>
+        </div>
+    </div>
+</div>
+
+<!-- 文件加密功能 -->
+<div class="content-card">
+    <h2 class="card-title"><i class="fas fa-file-lock"></i> 文件加密</h2>
+    <div class="file-encryption">
+        <div class="form-group">
+            <label class="form-label">文件内容:</label>
+            <textarea class="form-control" id="fileContent" rows="6" placeholder="粘贴文件内容或输入要加密的文本..."></textarea>
+        </div>
+        <div class="file-actions">
+            <button class="btn btn-primary" onclick="encryptFile()" id="encryptFileBtn" disabled>
+                <i class="fas fa-lock"></i> 加密文件
+            </button>
+            <button class="btn btn-secondary" onclick="decryptFile()" id="decryptFileBtn" disabled>
+                <i class="fas fa-unlock-alt"></i> 解密文件
+            </button>
+            <button class="btn btn-info" onclick="downloadEncryptedFile()" id="downloadBtn" disabled>
+                <i class="fas fa-download"></i> 下载加密文件
+            </button>
+        </div>
+        <div class="file-result" id="fileResult"></div>
+    </div>
+</div>
+
+<!-- 批量操作 -->
+<div class="content-card">
+    <h2 class="card-title"><i class="fas fa-list"></i> 批量消息处理</h2>
+    <div class="batch-operations">
+        <div class="form-group">
+            <label class="form-label">批量消息 (每行一条):</label>
+            <textarea class="form-control" id="batchMessages" rows="5" placeholder="消息1&#10;消息2&#10;消息3&#10;..."></textarea>
+        </div>
+        <div class="batch-actions">
+            <button class="btn btn-primary" onclick="batchEncrypt()" id="batchEncryptBtn" disabled>
+                <i class="fas fa-layer-group"></i> 批量加密
+            </button>
+            <button class="btn btn-secondary" onclick="batchDecrypt()" id="batchDecryptBtn" disabled>
+                <i class="fas fa-unlock"></i> 批量解密
+            </button>
+            <button class="btn btn-info" onclick="clearBatch()">
+                <i class="fas fa-eraser"></i> 清空
+            </button>
+        </div>
+        <div class="batch-progress" id="batchProgress" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <span class="progress-text" id="progressText">0/0</span>
+        </div>
+        <div class="batch-results" id="batchResults"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* 算法选择器样式 */
+    .algorithm-selector {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+    }
+
+    .algorithm-option {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 15px 20px;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: white;
+        min-width: 100px;
+    }
+
+    .algorithm-option:hover {
+        border-color: #667eea;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+    }
+
+    .algorithm-option.active {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.05);
+        color: #667eea;
+    }
+
+    .algorithm-option i {
+        font-size: 24px;
+    }
+
+    .algorithm-info {
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: 8px;
+        color: #666;
+        border-left: 4px solid #667eea;
+    }
+
+    /* 密钥管理样式 */
+    .key-management {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+    }
+
+    .key-status {
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: 8px;
+        color: #666;
+        border-left: 4px solid #ffc107;
+    }
+
+    .key-status.success {
+        border-left-color: #28a745;
+        background: #f0f8f0;
+        color: #155724;
+    }
+
+    /* 密文信息样式 */
+    .ciphertext-info {
+        display: flex;
+        gap: 15px;
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 6px;
+        font-size: 13px;
+    }
+
+    .info-item {
+        color: #666;
+    }
+
+    .info-item span {
+        font-weight: bold;
+        color: #333;
+    }
+
+    /* 文件加密样式 */
+    .file-actions {
+        display: flex;
+        gap: 10px;
+        margin: 15px 0;
+        flex-wrap: wrap;
+    }
+
+    .file-result {
+        margin-top: 15px;
+        padding: 15px;
+        border-radius: 8px;
+        background: #f8f9fa;
+        border-left: 4px solid #667eea;
+        display: none;
+    }
+
+    /* 批量操作样式 */
+    .batch-actions {
+        display: flex;
+        gap: 10px;
+        margin: 15px 0;
+        flex-wrap: wrap;
+    }
+
+    .batch-progress {
+        margin: 15px 0;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: #e0e0e0;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 10px;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+
+    .progress-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .batch-results {
+        margin-top: 15px;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .batch-item {
+        padding: 10px;
+        margin-bottom: 8px;
+        border-radius: 6px;
+        background: white;
+        border-left: 4px solid #28a745;
+        font-family: monospace;
+        font-size: 12px;
+    }
+
+    .batch-item.error {
+        border-left-color: #dc3545;
+        background: #fff5f5;
+    }
+
+    /* 简化的解密结果样式 */
+    .simple-decrypt-result {
+        margin-top: 20px;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border: 2px solid #b7e4c7;
+    }
+
+    .simple-decrypt-result.error {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        border: 2px solid #f1aeb5;
+    }
+
+    .decrypt-success-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #155724;
+    }
+
+    .decrypt-success-header i {
+        color: #28a745;
+        font-size: 1.2rem;
+    }
+
+    .decrypt-error-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #721c24;
+    }
+
+    .decrypt-error-header i {
+        color: #dc3545;
+        font-size: 1.2rem;
+    }
+
+    .decrypt-message {
+        background: rgba(255, 255, 255, 0.8);
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid rgba(183, 228, 199, 0.5);
+        color: #212529;
+        font-size: 1rem;
+        line-height: 1.6;
+        word-wrap: break-word;
+    }
+
+    .error-message {
+        background: rgba(255, 255, 255, 0.8);
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #f1aeb5;
+        color: #721c24;
+        font-size: 1rem;
+        word-wrap: break-word;
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+        .key-management,
+        .file-actions,
+        .batch-actions {
+            flex-direction: column;
+        }
+
+        .algorithm-selector {
+            justify-content: center;
+        }
+
+        .ciphertext-info {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .decrypt-header {
+            flex-direction: column;
+            gap: 10px;
+            text-align: center;
+        }
+
+        .info-row {
+            flex-direction: column;
+            gap: 8px;
+            text-align: center;
+        }
+
+        .decrypt-info {
+            padding: 15px;
+        }
+
+        .decrypt-content {
+            padding: 15px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let demoKeys = null;
+    let currentAlgorithm = 'ECC';
+    let encryptedFileData = null;
+
+    // 算法信息
+    const algorithmInfo = {
+        'ECC': 'ECC（椭圆曲线加密）- 高安全性，广泛应用',
+        'ELGAMAL': 'ElGamal（离散对数）- 经典算法，支持同态加密',
+        'SM2': 'SM2（国密标准）- 国产算法，性能优秀'
+    };
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        setupAlgorithmSelector();
+        updateButtonStates();
+    });
+
+    // 设置算法选择器
+    function setupAlgorithmSelector() {
+        document.querySelectorAll('.algorithm-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.algorithm-option').forEach(opt => opt.classList.remove('active'));
+                this.classList.add('active');
+                
+                currentAlgorithm = this.dataset.algorithm;
+                document.getElementById('algorithmInfo').textContent = algorithmInfo[currentAlgorithm];
+                
+                // 清除现有密钥，需要重新生成
+                demoKeys = null;
+                updateButtonStates();
+                updateKeyStatus();
+                
+                showAlert(`已切换到 ${currentAlgorithm} 算法`, 'info');
+            });
+        });
+    }
+
+    // 更新按钮状态
+    function updateButtonStates() {
+        const hasKeys = demoKeys !== null;
+        document.getElementById('sendBtn').disabled = !hasKeys;
+        document.getElementById('encryptFileBtn').disabled = !hasKeys;
+        document.getElementById('batchEncryptBtn').disabled = !hasKeys;
+        document.getElementById('exportBtn').disabled = !hasKeys;
+    }
+
+    // 更新密钥状态显示
+    function updateKeyStatus() {
+        const statusEl = document.getElementById('keyStatus');
+        if (demoKeys) {
+            statusEl.innerHTML = `<i class="fas fa-check-circle"></i> 密钥对已就绪（${currentAlgorithm}算法）`;
+            statusEl.className = 'key-status success';
+        } else {
+            statusEl.innerHTML = `<i class="fas fa-info-circle"></i> 请先生成或导入密钥对`;
+            statusEl.className = 'key-status';
+        }
+    }
+
+    async function generateDemoKeys() {
+        try {
+            const response = await fetch('/api/pke/generate-keys', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scheme: currentAlgorithm })
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                demoKeys = data.keys;
+                updateButtonStates();
+                updateKeyStatus();
+                showAlert(`${currentAlgorithm} 密钥对生成成功！`, 'success');
+            } else {
+                showAlert('密钥生成失败: ' + (data.error || '未知错误'), 'error');
+            }
+        } catch (error) {
+            showAlert('密钥生成失败: ' + error.message, 'error');
+        }
+    }
+
+    async function sendMessage() {
+        const message = document.getElementById('aliceMessage').value.trim();
+        const messageType = document.getElementById('messageType').value;
+        
+        if (!message) {
+            showAlert('请输入消息', 'warning');
+            return;
+        }
+        
+        if (!demoKeys) {
+            showAlert('请先生成密钥对', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/pke/encrypt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    scheme: currentAlgorithm, 
+                    message: message, 
+                    public_key: demoKeys.public_key 
+                })
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                const ciphertext = data.ciphertext;
+                document.getElementById('receivedCiphertext').value = ciphertext;
+                document.getElementById('decryptBtn').disabled = false;
+                
+                // 更新密文信息
+                document.getElementById('ciphertextLength').textContent = ciphertext.length;
+                document.getElementById('ciphertextAlgorithm').textContent = currentAlgorithm;
+                
+                const typeLabels = {
+                    'text': '普通文本',
+                    'confidential': '机密信息',
+                    'financial': '财务数据',
+                    'personal': '个人隐私'
+                };
+                
+                showAlert(`${typeLabels[messageType]}发送成功！`, 'success');
+            } else {
+                showAlert('消息发送失败: ' + (data.error || '未知错误'), 'error');
+            }
+        } catch (error) {
+            showAlert('消息发送失败: ' + error.message, 'error');
+        }
+    }
+
+    async function receiveMessage() {
+        const ciphertext = document.getElementById('receivedCiphertext').value.trim();
+        
+        try {
+            const response = await fetch('/api/pke/decrypt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    scheme: currentAlgorithm, 
+                    ciphertext: ciphertext, 
+                    private_key: demoKeys.private_key 
+                })
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                document.getElementById('decryptedMessage').innerHTML = `
+                    <div class="simple-decrypt-result">
+                        <div class="decrypt-success-header">
+                            <i class="fas fa-check-circle"></i>
+                            解密成功
+                        </div>
+                        <div class="decrypt-message">${data.plaintext}</div>
+                    </div>
+                `;
+                showAlert('消息解密成功！', 'success');
+            } else {
+                document.getElementById('decryptedMessage').innerHTML = `
+                    <div class="simple-decrypt-result error">
+                        <div class="decrypt-error-header">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            解密失败
+                        </div>
+                        <div class="error-message">${data.error || '未知错误'}</div>
+                    </div>
+                `;
+                showAlert('消息解密失败: ' + (data.error || '未知错误'), 'error');
+            }
+        } catch (error) {
+            showAlert('消息解密失败: ' + error.message, 'error');
+        }
+    }
+
+    // 密钥管理功能
+    function exportKeys() {
+        if (!demoKeys) {
+            showAlert('没有可导出的密钥', 'warning');
+            return;
+        }
+        
+        const keyData = {
+            algorithm: currentAlgorithm,
+            keys: demoKeys,
+            timestamp: new Date().toISOString()
+        };
+        
+        const blob = new Blob([JSON.stringify(keyData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${currentAlgorithm}_keys_${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        showAlert('密钥导出成功！', 'success');
+    }
+
+    function importKeys() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const keyData = JSON.parse(e.target.result);
+                    if (keyData.keys && keyData.algorithm) {
+                        demoKeys = keyData.keys;
+                        currentAlgorithm = keyData.algorithm;
+                        
+                        // 更新算法选择器
+                        document.querySelectorAll('.algorithm-option').forEach(opt => opt.classList.remove('active'));
+                        document.querySelector(`[data-algorithm="${currentAlgorithm}"]`).classList.add('active');
+                        document.getElementById('algorithmInfo').textContent = algorithmInfo[currentAlgorithm];
+                        
+                        updateButtonStates();
+                        updateKeyStatus();
+                        showAlert('密钥导入成功！', 'success');
+                    } else {
+                        showAlert('密钥文件格式错误', 'error');
+                    }
+                } catch (error) {
+                    showAlert('密钥文件解析失败', 'error');
+                }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    }
+
+    function clearKeys() {
+        if (confirm('确定要清除当前密钥吗？')) {
+            demoKeys = null;
+            updateButtonStates();
+            updateKeyStatus();
+            
+            // 清空相关显示
+            document.getElementById('receivedCiphertext').value = '';
+            document.getElementById('decryptedMessage').innerHTML = '解密结果将显示在这里...';
+            document.getElementById('ciphertextLength').textContent = '-';
+            document.getElementById('ciphertextAlgorithm').textContent = '-';
+            document.getElementById('decryptBtn').disabled = true;
+            
+            showAlert('密钥已清除', 'info');
+        }
+    }
+
+    // 文件加密功能
+    async function encryptFile() {
+        const content = document.getElementById('fileContent').value.trim();
+        
+        if (!content) {
+            showAlert('请输入文件内容', 'warning');
+            return;
+        }
+        
+        if (!demoKeys) {
+            showAlert('请先生成密钥对', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/pke/encrypt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    scheme: currentAlgorithm, 
+                    message: content, 
+                    public_key: demoKeys.public_key 
+                })
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                encryptedFileData = data.ciphertext;
+                document.getElementById('decryptFileBtn').disabled = false;
+                document.getElementById('downloadBtn').disabled = false;
+                
+                const resultEl = document.getElementById('fileResult');
+                resultEl.style.display = 'block';
+                resultEl.innerHTML = `
+                    <h5><i class="fas fa-check-circle" style="color: #28a745;"></i> 文件加密成功</h5>
+                    <p><strong>原始大小:</strong> ${content.length} 字符</p>
+                    <p><strong>加密后大小:</strong> ${encryptedFileData.length} 字符</p>
+                    <p><strong>使用算法:</strong> ${currentAlgorithm}</p>
+                    <div style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px; font-family: monospace; font-size: 12px; max-height: 100px; overflow-y: auto;">
+                        ${encryptedFileData}
+                    </div>
+                `;
+                
+                showAlert('文件加密成功！', 'success');
+            } else {
+                showAlert('文件加密失败: ' + (data.error || '未知错误'), 'error');
+            }
+        } catch (error) {
+            showAlert('文件加密失败: ' + error.message, 'error');
+        }
+    }
+
+    async function decryptFile() {
+        if (!encryptedFileData) {
+            showAlert('没有可解密的文件数据', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/pke/decrypt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    scheme: currentAlgorithm, 
+                    ciphertext: encryptedFileData, 
+                    private_key: demoKeys.private_key 
+                })
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                document.getElementById('fileContent').value = data.plaintext;
+                
+                const resultEl = document.getElementById('fileResult');
+                resultEl.innerHTML = `
+                    <h5><i class="fas fa-unlock" style="color: #667eea;"></i> 文件解密成功</h5>
+                    <p>文件内容已恢复到原始文本框中</p>
+                `;
+                
+                showAlert('文件解密成功！', 'success');
+            } else {
+                showAlert('文件解密失败: ' + (data.error || '未知错误'), 'error');
+            }
+        } catch (error) {
+            showAlert('文件解密失败: ' + error.message, 'error');
+        }
+    }
+
+    function downloadEncryptedFile() {
+        if (!encryptedFileData) {
+            showAlert('没有可下载的加密文件', 'warning');
+            return;
+        }
+        
+        const blob = new Blob([encryptedFileData], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `encrypted_file_${currentAlgorithm}_${Date.now()}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        showAlert('加密文件下载成功！', 'success');
+    }
+
+    // 批量操作功能
+    async function batchEncrypt() {
+        const messages = document.getElementById('batchMessages').value.trim().split('\n').filter(m => m.trim());
+        
+        if (messages.length === 0) {
+            showAlert('请输入要批量加密的消息', 'warning');
+            return;
+        }
+        
+        if (!demoKeys) {
+            showAlert('请先生成密钥对', 'warning');
+            return;
+        }
+        
+        const progressEl = document.getElementById('batchProgress');
+        const fillEl = document.getElementById('progressFill');
+        const textEl = document.getElementById('progressText');
+        const resultsEl = document.getElementById('batchResults');
+        
+        progressEl.style.display = 'block';
+        resultsEl.innerHTML = '';
+        
+        for (let i = 0; i < messages.length; i++) {
+            const message = messages[i].trim();
+            if (!message) continue;
+            
+            try {
+                const response = await fetch('/api/pke/encrypt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        scheme: currentAlgorithm, 
+                        message: message, 
+                        public_key: demoKeys.public_key 
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    resultsEl.innerHTML += `
+                        <div class="batch-item">
+                            <strong>消息 ${i + 1}:</strong> ${message}<br>
+                            <strong>密文:</strong> ${data.ciphertext.substring(0, 100)}...
+                        </div>
+                    `;
+                } else {
+                    resultsEl.innerHTML += `
+                        <div class="batch-item error">
+                            <strong>消息 ${i + 1} 加密失败:</strong> ${message}<br>
+                            <strong>错误:</strong> ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsEl.innerHTML += `
+                    <div class="batch-item error">
+                        <strong>消息 ${i + 1} 加密异常:</strong> ${message}<br>
+                        <strong>错误:</strong> ${error.message}
+                    </div>
+                `;
+            }
+            
+            // 更新进度
+            const progress = ((i + 1) / messages.length * 100);
+            fillEl.style.width = progress + '%';
+            textEl.textContent = `${i + 1}/${messages.length}`;
+        }
+        
+        document.getElementById('batchDecryptBtn').disabled = false;
+        showAlert(`批量加密完成！处理了 ${messages.length} 条消息`, 'success');
+    }
+
+    async function batchDecrypt() {
+        const ciphertexts = Array.from(document.querySelectorAll('.batch-item:not(.error)'))
+            .map(item => {
+                const text = item.textContent;
+                const match = text.match(/密文:\s*(.+)/);
+                return match ? match[1].replace('...', '') : null;
+            }).filter(c => c);
+        
+        if (ciphertexts.length === 0) {
+            showAlert('没有可解密的密文', 'warning');
+            return;
+        }
+        
+        const resultsEl = document.getElementById('batchResults');
+        resultsEl.innerHTML = '<h5>批量解密结果:</h5>';
+        
+        for (let i = 0; i < ciphertexts.length; i++) {
+            try {
+                // 这里简化处理，实际应用中需要完整的密文
+                showAlert('批量解密功能需要完整密文数据', 'info');
+                break;
+            } catch (error) {
+                console.error('批量解密错误:', error);
+            }
+        }
+    }
+
+    function clearBatch() {
+        document.getElementById('batchMessages').value = '';
+        document.getElementById('batchResults').innerHTML = '';
+        document.getElementById('batchProgress').style.display = 'none';
+        document.getElementById('batchDecryptBtn').disabled = true;
+    }
+</script>
+{% endblock %} 
