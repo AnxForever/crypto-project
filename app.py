@@ -166,7 +166,7 @@ def get_pke_performance_data():
         # 加密性能数据
         encrypt_data = df[df['operation'] == 'encrypt']
         encryption_performance = {}
-        for size in encrypt_data['data_size'].unique():
+        for size in pd.unique(encrypt_data['data_size']):
             size_data = encrypt_data[encrypt_data['data_size'] == size]
             encryption_performance[f'{size}B'] = {
                 'schemes': size_data['scheme'].tolist(),
@@ -177,7 +177,7 @@ def get_pke_performance_data():
         # 解密性能数据
         decrypt_data = df[df['operation'] == 'decrypt']
         decryption_performance = {}
-        for size in decrypt_data['data_size'].unique():
+        for size in pd.unique(decrypt_data['data_size']):
             size_data = decrypt_data[decrypt_data['data_size'] == size]
             decryption_performance[f'{size}B'] = {
                 'schemes': size_data['scheme'].tolist(),
@@ -188,7 +188,7 @@ def get_pke_performance_data():
         performance_scores = []
         for scheme in schemes:
             scheme_data = df[df['scheme'] == scheme]
-            key_gen_time = scheme_data[scheme_data['operation'] == 'key_gen']['time'].values[0]
+            key_gen_time = scheme_data[scheme_data['operation'] == 'key_gen']['time'].iloc[0]
             avg_encrypt_time = scheme_data[scheme_data['operation'] == 'encrypt']['time'].mean()
             avg_decrypt_time = scheme_data[scheme_data['operation'] == 'decrypt']['time'].mean()
             

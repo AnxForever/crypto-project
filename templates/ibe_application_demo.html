@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+
+{% block title %}IBE真实数据应用：医疗记录加密{% endblock %}
+
+{% block custom_css %}
+<style>
+    /* --- CSS隔离 & 主题重置 --- */
+    /*
+     * 使用唯一的ID #ibe-app-container 来包裹所有内容，
+     * 并重写所有CSS规则，以#ibe-app-container为前缀，
+     * 这创建了一个"无尘室"，彻底隔绝了来自base.html的全局样式干扰。
+    */
+    #ibe-app-container {
+        background: #2a2a3e; /* 深紫蓝色背景 */
+        color: #e0e0e0;
+        padding: 40px;
+        border-radius: 20px;
+        height: 100%;
+    }
+
+    /* 强制覆盖来自base.html的内边距，实现真正的全屏沉浸感 */
+    .main-content {
+        padding: 0 !important;
+        background: #2a2a3e !important;
+    }
+
+    /* --- 标题和排版 --- */
+    #ibe-app-container h2 {
+        font-size: 28px;
+        font-weight: bold;
+        color: #ffffff;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+    }
+    
+    #ibe-app-container h2 .fas {
+        color: #9d4edd; /* 紫色图标 */
+        margin-right: 15px;
+        font-size: 32px;
+    }
+
+    #ibe-app-container .page-description {
+        color: #a0a0b0; /* 柔和的灰色描述文字 */
+        margin-bottom: 40px;
+        max-width: 800px;
+    }
+    
+    /* --- 步骤卡片布局 --- */
+    #ibe-app-container .step-card {
+        background: rgba(46, 49, 72, 0.7); /* 半透明卡片背景 */
+        border: 1px solid rgba(157, 78, 221, 0.3);
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 25px;
+        backdrop-filter: blur(10px);
+    }
+
+    #ibe-app-container .step-card h4 {
+        color: #9d4edd;
+        font-weight: bold;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        font-size: 20px;
+        border-bottom: 1px solid rgba(157, 78, 221, 0.3);
+        padding-bottom: 15px;
+    }
+
+    #ibe-app-container .step-card h4 .step-icon {
+        margin-right: 12px;
+        font-size: 24px;
+    }
+    
+    /* --- 表单和输入框 --- */
+    #ibe-app-container .form-label {
+        color: #a0a0b0;
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+
+    #ibe-app-container .form-control, 
+    #ibe-app-container .form-select {
+        background-color: rgba(26, 26, 46, 0.8);
+        color: #e0e0e0;
+        border: 1px solid rgba(157, 78, 221, 0.4);
+        border-radius: 8px;
+    }
+
+    #ibe-app-container .form-control:focus, 
+    #ibe-app-container .form-select:focus {
+        background-color: rgba(0,0,0,0.5);
+        color: #ffffff;
+        border-color: #9d4edd;
+        box-shadow: 0 0 0 3px rgba(157, 78, 221, 0.25);
+    }
+    
+    #ibe-app-container #csv-input {
+        min-height: 150px;
+        font-family: 'Courier New', Courier, monospace;
+        resize: vertical;
+    }
+    
+    /* --- 按钮 --- */
+    #ibe-app-container .btn {
+        border-radius: 8px;
+        font-weight: bold;
+        padding: 10px 20px;
+        transition: all 0.3s ease;
+    }
+
+    #ibe-app-container .btn-custom-primary {
+        background: linear-gradient(90deg, #9d4edd, #3a86ff);
+        color: white;
+        border: none;
+    }
+    
+    #ibe-app-container .btn-custom-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(157, 78, 221, 0.4);
+    }
+    
+    #ibe-app-container .btn-custom-secondary {
+        background: transparent;
+        color: #3a86ff;
+        border: 1px solid #3a86ff;
+    }
+
+    #ibe-app-container .btn-custom-secondary:hover {
+        background: #3a86ff;
+        color: white;
+    }
+    
+    /* --- 结果表格 --- */
+    #ibe-app-container #result-table-container {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid rgba(157, 78, 221, 0.3);
+        border-radius: 8px;
+    }
+    
+    #ibe-app-container #result-table thead {
+        position: sticky;
+        top: 0;
+        background: #2a2a3e; /* 确保表头在滚动时背景一致 */
+    }
+
+    #ibe-app-container #result-table th {
+        color: #9d4edd;
+        border-bottom: 2px solid #9d4edd;
+        background: #2a2a3e;
+    }
+    
+    #ibe-app-container #result-table td {
+        white-space: nowrap;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        border-color: rgba(157, 78, 221, 0.2);
+    }
+
+    /* --- 复选框 --- */
+    #ibe-app-container .form-check-label {
+        color: #e0e0e0;
+    }
+
+    #ibe-app-container .form-check-input:checked {
+        background-color: #9d4edd;
+        border-color: #9d4edd;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="ibe-app-container">
+    
+    <!-- 移除了原有的 page-header，将标题整合进新的容器内 -->
+    <div>
+        <h2><i class="fas fa-hospital-user"></i> IBE真实数据应用：医疗记录Sakai-Kasahara加密</h2>
+        <p class="page-description">演示使用Sakai-Kasahara IBE方案对 (模拟) 医疗记录中的敏感信息进行加密。展示基于医生或医院身份进行数据保护，简化医疗信息共享的管理。</p>
+    </div>
+
+    <!-- 步骤 1 -->
+    <div class="step-card">
+        <h4><i class="fas fa-cogs step-icon"></i>步骤 1: 初始化Sakai-Kasahara IBE系统 (PKG)</h4>
+        <button id="init-pkg-btn" class="btn btn-custom-primary w-100">
+            <i class="fas fa-power-off"></i> 初始化PKG
+        </button>
+        <div id="init-status" class="mt-2 text-center" style="color: #00f5d4;"></div>
+    </div>
+
+    <!-- 步骤 2 -->
+    <div class="step-card">
+        <h4><i class="fas fa-file-csv step-icon"></i>步骤 2: 加载医疗数据</h4>
+        <div class="mb-3">
+            <label for="csv-input" class="form-label">粘贴CSV数据:</label>
+            <textarea id="csv-input" class="form-control"></textarea>
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+            <button id="load-sample-btn" class="btn btn-custom-secondary">加载范例医疗数据</button>
+            <div>
+                <input type="file" id="csv-upload" accept=".csv" style="display: none;">
+                <button id="upload-csv-btn" class="btn btn-custom-secondary me-2">上传CSV文件</button>
+                <button id="parse-csv-btn" class="btn btn-custom-primary">解析数据</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 步骤 3 -->
+    <div id="step-3-card" class="step-card" style="display: none;">
+        <h4><i class="fas fa-user-shield step-icon"></i>步骤 3: 提取用户私钥(PKG操作)和选择加密字段</h4>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="identity-column-select" class="form-label">选择身份字段 (用于加密/解密目标):</label>
+                <select id="identity-column-select" class="form-select"></select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="identity-value-select" class="form-label">选定此字段的值作为IBE加密的身份标识:</label>
+                <select id="identity-value-select" class="form-select"></select>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">为需要解密的用户/医生提取私钥:</label>
+            <p class="text-muted small">在真实系统中，此私钥将安全地分发给用户。</p>
+            <button id="extract-key-btn" class="btn btn-custom-secondary">为选定身份提取私钥</button>
+            <pre id="private-key-display" class="result-panel mt-2" style="display: none; white-space: pre-wrap; word-break: break-all; background-color: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;"></pre>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">选择要加密的字段:</label>
+            <div id="fields-to-encrypt-container" class="d-flex flex-wrap gap-2"></div>
+        </div>
+        <button id="encrypt-btn" class="btn btn-custom-primary w-100">
+            <i class="fas fa-lock"></i> 使用IBE加密选中字段
+        </button>
+    </div>
+
+    <!-- 步骤 4 -->
+    <div id="step-4-card" class="step-card" style="display: none;">
+        <h4><i class="fas fa-table step-icon"></i>步骤 4: 查看处理后医疗数据</h4>
+        <div id="result-table-container">
+            <table id="result-table" class="table table-hover">
+                <thead></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div id="result-placeholder" class="text-center text-muted mt-3">
+            请先加载并解析数据。
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block custom_js %}
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+<script>
+$(document).ready(function() {
+    let ibeScheme = 'sakai_kasahara';
+    let rawData = [];
+    let headers = [];
+
+    // --- 步骤 1: 初始化 ---
+    $('#init-pkg-btn').click(function() {
+        const btn = $(this);
+        const statusDiv = $('#init-status');
+        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 初始化中...');
+        
+        $.ajax({
+            url: '/api/ibe/setup',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ scheme: ibeScheme }),
+            success: function(response) {
+                statusDiv.text('系统初始化成功! Public Params已在后台生成并存储。');
+                btn.removeClass('btn-custom-primary').addClass('btn-success').html('<i class="fas fa-check"></i> 初始化成功');
+            },
+            error: function(xhr) {
+                statusDiv.text('初始化失败: ' + xhr.responseJSON.error).addClass('text-danger');
+                btn.prop('disabled', false).html('<i class="fas fa-power-off"></i> 初始化PKG');
+            }
+        });
+    });
+
+    // --- 步骤 2: 加载数据 ---
+    $('#load-sample-btn').click(function() {
+        $.get('/api/ibe/load_sample_csv', function(response) {
+            if (response.status === 'success') {
+                $('#csv-input').val(response.csv_data);
+            }
+        });
+    });
+
+    $('#upload-csv-btn').click(() => $('#csv-upload').click());
+    $('#csv-upload').change(function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                $('#csv-input').val(e.target.result);
+            };
+            reader.readAsText(file);
+        }
+    });
+
+    $('#parse-csv-btn').click(function() {
+        const csvText = $('#csv-input').val().trim();
+        if (!csvText) {
+            alert('请粘贴、上传或加载范例CSV数据。');
+            return;
+        }
+
+        Papa.parse(csvText, {
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                rawData = results.data;
+                headers = results.meta.fields;
+                displayTable(rawData);
+                populateSelects();
+                $('#step-3-card, #step-4-card').slideDown();
+                $('#result-placeholder').hide();
+            }
+        });
+    });
+
+    function displayTable(data) {
+        const tableHead = $('#result-table thead');
+        const tableBody = $('#result-table tbody');
+        tableHead.empty();
+        tableBody.empty();
+
+        let headerHtml = '<tr>';
+        headers.forEach(h => headerHtml += `<th>${h}</th>`);
+        headerHtml += '</tr>';
+        tableHead.append(headerHtml);
+
+        data.forEach(row => {
+            let rowHtml = '<tr>';
+            headers.forEach(h => {
+                let val = row[h] || '';
+                rowHtml += `<td title="${val}">${val}</td>`;
+            });
+            rowHtml += '</tr>';
+            tableBody.append(rowHtml);
+        });
+    }
+
+    function populateSelects() {
+        const idColSelect = $('#identity-column-select');
+        const fieldsContainer = $('#fields-to-encrypt-container');
+        idColSelect.empty();
+        fieldsContainer.empty();
+
+        headers.forEach(h => {
+            idColSelect.append(new Option(h, h));
+            fieldsContainer.append(`
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" value="${h}" id="check-${h}">
+                    <label class="form-check-label" for="check-${h}">${h}</label>
+                </div>
+            `);
+        });
+        idColSelect.trigger('change');
+    }
+
+    $('#identity-column-select').change(function() {
+        const selectedColumn = $(this).val();
+        const idValSelect = $('#identity-value-select');
+        idValSelect.empty();
+        const uniqueValues = [...new Set(rawData.map(row => row[selectedColumn]))];
+        uniqueValues.forEach(val => {
+            if(val) idValSelect.append(new Option(val, val));
+        });
+    });
+    
+    // --- 步骤 3: 加密 ---
+    $('#extract-key-btn').click(function() {
+        const identity = $('#identity-value-select').val();
+         $.ajax({
+            url: '/api/ibe/extract',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                scheme: ibeScheme,
+                identity: identity
+            }),
+            success: function(response) {
+                $('#private-key-display').text(JSON.stringify(response.private_key, null, 2)).slideDown();
+            },
+            error: function(xhr) {
+                alert('密钥提取失败: ' + xhr.responseJSON.error);
+            }
+        });
+    });
+
+    $('#encrypt-btn').click(function() {
+        const identity = $('#identity-value-select').val();
+        const fieldsToEncrypt = [];
+        $('#fields-to-encrypt-container input:checked').each(function() {
+            fieldsToEncrypt.push($(this).val());
+        });
+
+        if (!identity || fieldsToEncrypt.length === 0) {
+            alert('请选择一个身份和至少一个要加密的字段。');
+            return;
+        }
+
+        $.ajax({
+            url: '/api/ibe/encrypt_bulk',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                scheme: ibeScheme,
+                identity: identity,
+                fields_to_encrypt: fieldsToEncrypt,
+                dataset: rawData
+            }),
+            success: function(response) {
+                displayTable(response.encrypted_dataset);
+                alert('批量加密成功!');
+            },
+            error: function(xhr) {
+                alert('加密失败: ' + xhr.responseJSON.error);
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 
